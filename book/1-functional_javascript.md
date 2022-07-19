@@ -1,0 +1,264 @@
+# 함수형 자바스크립트 소개
+
+함수형 프로그래밍이란 성공적인 프로그래밍을 위해 부수 효과를 최대한 멀리하고 조합성을 강조하는 프로그래밍 패러다임이다. 함수형 프로그래밍이 부수효과를 멀리하는 이유 첫째는 오류를 줄이기 위해서이고, 둘째는 조합성 혹은 모듈화 수준을 높이기 위해서이다.
+
+## 1.1 함수형 프로그래밍 그거 먹는 건가요?
+
+### 1.1.1 함수형 자바스크립트를 검색하면 나오는 예제
+
+> "어떻게 돌아가는지는 알겠는데, 왜 이걸 쓰는 거지?"
+
+
+##### [코드 1-1] addMaker
+```javascript
+function addMaker(a) {
+  return function(b) {
+    return a + b;
+  }
+}
+addMaker(10)(5); // 15
+
+/*
+* addMaker(10)의 결과는 function(b) { return 10 + b; } 와 같고 함수다.
+* (function(b) { return 10 + b; })(5) 와 같으므로 15가 된다.
+* */
+```
+
+위와 같이 함수로 함수를 리턴하는 기법은 정말 많이 사용되고 있다.
+
+
+### 1.1.2 값으로써의 함수와 클로저
+
+##### [코드 1-4] addMaker
+```javascript
+function addMaker(a) {
+  return function(b) {
+    return a + b;
+  }
+}
+addMaker(10)(5); // 15
+
+var add5 = addMaker(5);
+add5(3); // 8
+add5(4); // 9
+
+var add3 = addMaker(3);
+add3(3); // 6
+add3(4); // 7
+```
+
+함수는 값을 리턴할 수 있고, 함수는 값이 될수 있다. `addMaker`는 내부에서 함수를 정의했으며, 이 함수가 리턴한 익명함수는 클로저가 되었다. 리턴된 익명함수 내부에서 `a`가 정의된 적 없지만 `a`를 참조하고 있고, `a`는 부모스코프에 있다.
+
+`addMaker`가 실행된 이후에, `addMaker`의 인자인 `a` 값을 변경시키지 않기에항상 동일한 값을 갖는다. 그래서 위 상황에서 `a`는 상수로 쓰이게 된다. 이런 상황의 `a`는 불변하지만, 모든 경우에서 그렇다고 할수 없다. 클로저가 기억하는 변수의 값은 변할 수 있는 것이다.
+
+## 1.2 함수형 자바스크립트 실용성
+
+절차지향적으로 작성된 코드를 함수형으로 변경하면서 함수형 자바스크립트를 경험해보자.
+
+### 1.2.1 회원 목록 중 여러 명 찾기
+
+먼저, for문으로 이루어진 절차 지향적인 코드이다.
+
+##### [코드 1-5] for 문으로 필터링하기
+```javascript
+var temp_users = [];
+for (var i = 0, len = users.length; i < len; i++) {
+  if (users[i].age < 30) temp_users.push(users[i]);
+}
+console.log(temp_users.length);
+// 4
+
+// (2)
+var ages = [];
+for (var i = 0, len = temp_users.length; i < len; i++) {
+  ages.push(temp_users[i].age);
+}
+console.log(ages);
+// [25, 28, 27, 24]
+
+// (3)
+var temp_users = [];
+for (var i = 0, len = users.length; i < len; i++) {
+  if (users[i].age >= 30) temp_users.push(users[i]);
+}
+console.log(temp_users.length);
+// 3
+
+// (4)
+var names = [];
+for (var i = 0, len = temp_users.length; i < len; i++) {
+  names.push(temp_users[i].name);
+}
+console.log(names);
+```
+
+### 1.2.2 for에서 filter로 if에서 predicate로
+기존 코드를 `filter` 함수를 만들어 바꿔보았다.
+
+```javascript
+// 기존 코드
+/*
+var temp_users = [];
+for (var i = 0, len = users.length; i < len; i++) {
+  if (users[i].age < 30) temp_users.push(users[i]);
+}
+console.log(temp_users.length); // 4
+*/
+
+// 바꾼 코드
+function filter(list, predicate) {
+  var new_list = [];
+  for (var i = 0, len = list.length; i < len; i++) {
+    if (predicate(list[i])) new_list.push(list[i]);
+  }
+  return new_list;
+}
+```
+이 함수는 인자로 list와 predicate 함수를 받아, 루프를 돌면서 list의 i번째 값을 남갸즌다. predicate는 배열의 길이 만큼 실행되며, predicate를 실행한 값이 참일 때만 새로운 배열에 추가해준다. 여기선 중요한건 new_list.push 여부를 predicate에게 완전히 위임했다는 것이다.
+
+그리고 새로운 값인 new_list를 리턴해준다. 이전의 값을 바꾸지 않는 다는 것은 함수형 프로그래밍 관점에서 굉장히 상징적인 부분이다.
+
+
+이제 `filter`를 사용해보자.
+
+##### [코드 1-7] filter 사용
+```javascript
+                                   // predicate
+var users_under_30 = filter(users, function(user) { return user.age < 30 });
+console.log(users_under_30.length);
+// 4
+
+var ages = [];
+for (var i = 0, len = users_under_30.length; i < len; i++) {
+  ages.push(users_under_30[i].age);
+}
+console.log(ages);
+// [25, 28, 27, 24]
+                                  // predicate
+var users_over_30 = filter(users, function(user) { return user.age >= 30 });
+console.log(users_over_30.length);
+// 3
+
+var names = [];
+for (var i = 0, len = users_over_30.length; i < len; i++) {
+  names.push(users_over_30[i].name);
+}
+console.log(names);
+// ["ID", "BJ", "JM"]
+```
+코드 1-5와 비교해 코드가 짧아졌스며, 재사용성이 높은 `filter`를 하나 배웠다.
+
+### 1.2.3 함수형 프로그래밍적인 관점으로 filter 보기
+
+함수형 프로그래밍 관점에서 `filter` 와 `predicate`는 많은 이야기를 내포하고 있다.  `filter` 함수는 항상 동일한 인자가 들어오면 동일하게 동작한다. 이 함수는 외부나 내부의 어떠 ㄴ상태 변화에도 의존하지 않는다. 내부에 `new_list`를 바꾸고 있지만 그 변화에 의존하는 다른 로직이 없다.
+
+절차 지향 프로그래밍에서는 위에서 아래로 내려가면서 특정 변수의 값을 변경해 나가는 식으로 로직을 만든다. 객체지향 프로그래밍에서는 객체를 만들어 ㄴ호고 객체들 간의 협업을 통해 로직을 만든다. 이벤트 등으로 서로 연결한 후 상태 변화를 감지하여 스스로 자신이 가진 값을 변경하거나, 상대의 메서드를 직접 실행하여 상태를 변경하는 식으로 프로그래밍한다.
+
+이에 반해, 함수형 프로그래밍에서는 '항상 동일하게 동작하는 함수'를 만들고, 보조함수를 조합하는 식으로 로직을 완성한다. 내부에서 관리하고 있는 상태를 따로 두지 않고 넘겨진 인자에만 의존한다. 동일한 인자가 들어오면 항상 동일한 값을 리턴하도록 한다. 보조 함수 역시 인자이며, 보조 함수에서도 상태를 변경하지 않으면 보조 함수를 받은 함수ㄹ는 항상 동일한 결과를 만드는 함수가 된다.
+
+많은 사람들이 함수형 프로그래밍과 객체지향이 대척된다고 생각한다. 하지만 현대 프로그래밍에서 다루는 값은 대부분 객체이므로 함수형 프로그래밍에서도 결국 개체를 다뤄야한다. 다만 기능 확장을 객체의 확장으로 풀어가느냐 함수 확자응로 풀어가느냐의 차이이다.
+
+### 1.2.4 map 함수
+
+리팩터링의 핵심은 중복을 제거하고 의도를 드러내는 것이다. 아래 기존 코드를 보면 새로운 배열을 만든다는 점에서 코드 중복이 발생하고 있다. 이를 고쳐보자.
+
+##### [코드 1-8] map
+```javascript
+// 기존 코드
+/*
+var ages = [];
+for (var i = 0, len = users_under_30.length; i < len; i++) {
+  ages.push(users_under_30[i].age);
+}
+console.log(ages);
+var names = [];
+for (var i = 0, len = users_over_30.length; i < len; i++) {
+  names.push(users_over_30[i].name);
+}
+console.log(names);
+ */
+
+// 바꾼 코드
+function map(list, iteratee) {
+  var new_list = [];
+  for (var i = 0, len = list.length; i < len; i++) {
+    new_list.push(iteratee(list[i]));
+  }
+  return new_list;
+}
+```
+##### [코드 1-9] map 사용
+```javascript
+var users_under_30 = filter(users, function(user) { return user.age < 30 });
+console.log(users_under_30.length);
+// 4
+                               // iteratee
+var ages = map(users_under_30, function(user) { return user.age; });
+console.log(ages);
+// [25, 28, 27, 24]
+
+var users_over_30 = filter(users, function(user) { return user.age >= 30 });
+console.log(users_over_30.length);
+// 3
+                               // iteratee
+var names = map(users_over_30, function(user) { return user.name; });
+console.log(names);
+// ["ID", "BJ", "JM"]
+```
+
+코드가 매우 단순해졌다. `for`도 없고 `if`도 없다.
+
+### 1.2.5 실행 결과로 바로 실행하기
+
+함수의 리턴 값을 바로 다른 함수의 인자로 사용하면 변수 할당을 줄일 수 있다. `filter` 함수의 결과가 배열이므로 `map`의 첫 번째 인자로 바로 사용 가능하다.
+
+##### [코드 1-10] 함수 중첩
+```javascript
+var ages = map(
+  filter(users, function(user) { return user.age < 30 }),
+  function(user) { return user.age; });
+
+console.log(ages.length);
+// 4
+console.log(ages);
+// [25, 28, 27, 24]
+
+var names = map(
+  filter(users, function(user) { return user.age >= 30 }),
+  function(user) { return user.name; });
+
+console.log(names.length);
+// 3
+console.log(names);
+// ["ID", "BJ", "JM"]
+```
+
+작은 함수를 하나 더 만들면 변수 할당을 모두 없앨 수 있다.
+
+##### [코드 1-11] 함수 중첩2
+```javascript
+function log_length(value) {
+  console.log(value.length);
+  return value;
+}
+
+console.log(log_length(
+  map(
+    filter(users, function(user) { return user.age < 30 }),
+    function(user) { return user.age; })));
+// 4
+// [25, 28, 27, 24]
+
+console.log(log_length(
+  map(
+    filter(users, function(user) { return user.age >= 30 }),
+    function(user) { return user.name; })));
+// 3
+// ["ID", "BJ", "JM"]
+```
+
+### 1.2.6 함수를 값으로 다룬 예제의 실용성
+
+앞서 만들어 봤던 `addMaker`와 비슷한 패턴의 함수인 `bvalue` 함수를 만들어서 코드 1-12의 코드를 더 줄여보자.
+
+
